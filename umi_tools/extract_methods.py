@@ -89,11 +89,17 @@ def mask_umi(umi, umi_quals, quality_encoding,  quality_filter_threshold):
     return new_umi
 
 
+def complement(seq):
+        complementDict = {'A':'T','T':'A','C':'G','G':'C','N':'N'}
+        return ''.join([complementDict[x] if x in complementDict else x for x in seq])
+
+
 def ExtractBarcodes(read, match,
                     extract_umi=False,
                     extract_cell=False,
                     discard=False,
-                    retain_umi=False):
+                    retain_umi=False,
+                    is_read2=False):
     '''Extract the cell and umi barcodes using a regex.match object
 
     inputs:
@@ -138,9 +144,11 @@ def ExtractBarcodes(read, match,
             umi_bases.update(range(span[0], span[1]))
         elif discard and k.startswith("discard_"):
             discard_bases.update(range(span[0], span[1]))
-
     new_seq, new_quals, umi_quals, cell_quals = extractSeqAndQuals(
         read.seq, read.quals, umi_bases, cell_bases, discard_bases, retain_umi)
+    if is_read2:
+        umi_quals = umi_quals[::-1]
+        umi = complement(umi)[::-1]
 
     return (cell_barcode, cell_barcode_quals,
             umi, umi_quals,
@@ -250,12 +258,12 @@ class ExtractFilterAndUpdate:
                 (cell, cell_quals, umi, umi_quals,
                  new_seq, new_quals) = ExtractBarcodes(
                      read1, match, extract_cell=self.extract_cell,
-                     extract_umi=True, discard=True, retain_umi=self.retain_umi)
+                     extract_umi=True, discard=True, retain_umi=self.retain_umi, is_read2=False)
             if match2:
                 (cell2, cell_quals2, umi2, umi_quals2,
                  new_seq2, new_quals2) = ExtractBarcodes(
                      read2, match2, extract_cell=self.extract_cell,
-                     extract_umi=True, discard=True, retain_umi=self.retain_umi)
+                     extract_umi=True, discard=True, retain_umi=self.retain_umi, is_read2=True)
 
             if match and match2:
                 if self.either_read_resolve == "quality":
